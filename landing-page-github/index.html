@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TransUNet with CNN Attention</title>
+  <meta
+    name="description"
+    content="Research project page for TransUNet with CNN-guided attention on the Synapse multi-organ segmentation benchmark."
+  >
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#top">TransUNet Research</a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+        Menu
+      </button>
+      <nav id="site-nav" class="site-nav" aria-label="Primary">
+        <a href="#overview">Overview</a>
+        <a href="#attention">Attention Update</a>
+        <a href="#results">Results</a>
+        <a href="#reproduce">Reproduce</a>
+        <a href="#repo">Repository</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Medical Image Segmentation Research</p>
+          <h1>TransUNet with CNN-Guided Attention for Synapse Segmentation</h1>
+          <p class="lead">
+            A cleaned research codebase that extends the hybrid R50-ViT TransUNet encoder with
+            CNN attention injection strategies, then packages the full experiment for reproducible
+            Google Colab runs.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation" target="_blank" rel="noreferrer">
+              View Repository
+            </a>
+            <a class="button subtle" href="https://arxiv.org/pdf/2102.04306" target="_blank" rel="noreferrer">
+              Read Original Paper
+            </a>
+          </div>
+          <ul class="hero-meta">
+            <li>Backbone: R50-ViT-B/16</li>
+            <li>Dataset: Synapse multi-organ segmentation</li>
+            <li>Focus: attention fusion variants and Colab reproducibility</li>
+          </ul>
+        </div>
+        <aside class="hero-panel">
+          <div class="panel-card panel-emphasis">
+            <h2>Current Research Default</h2>
+            <p><code>cnn_fusion</code> on scales <code>1/8, 1/4, 1/2</code></p>
+            <div class="mini-grid">
+              <div>
+                <span class="mini-label">Legacy baseline</span>
+                <strong>77.29 mean Dice</strong>
+              </div>
+              <div>
+                <span class="mini-label">Legacy baseline</span>
+                <strong>30.71 mean HD95</strong>
+              </div>
+            </div>
+            <p class="panel-note">
+              Existing quantitative results shown here come from the earlier TransUNet reproduction.
+              The new attention variants are the active research direction in this repo.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="overview" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Overview</p>
+          <h2>What this project is actually doing</h2>
+        </div>
+        <div class="overview-grid">
+          <article class="info-card">
+            <h3>Base model</h3>
+            <p>
+              The project starts from the hybrid ResNet-50 plus ViT TransUNet encoder-decoder
+              pipeline for medical image segmentation.
+            </p>
+          </article>
+          <article class="info-card">
+            <h3>Research change</h3>
+            <p>
+              The main modification is not a full redesign. It is a targeted encoder update that
+              injects CNN attention at carefully chosen scales before or during hidden feature fusion.
+            </p>
+          </article>
+          <article class="info-card">
+            <h3>Practical goal</h3>
+            <p>
+              Keep the codebase small enough for research iteration, and make the experiment easy to
+              rerun on Google Colab with resume checkpoints and Google Drive asset caching.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="attention" class="section section-alt">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Attention Update</p>
+          <h2>The two attention paths added to TransUNet</h2>
+        </div>
+        <div class="attention-layout">
+          <div class="attention-rail">
+            <div class="rail-step">
+              <span class="step-index">01</span>
+              <div>
+                <h3>Hybrid encoder features</h3>
+                <p>Extract multi-scale CNN features from the ResNet branch before patch projection.</p>
+              </div>
+            </div>
+            <div class="rail-step">
+              <span class="step-index">02</span>
+              <div>
+                <h3>Attention refinement</h3>
+                <p>Apply residual channel-spatial attention to selected CNN scales.</p>
+              </div>
+            </div>
+            <div class="rail-step">
+              <span class="step-index">03</span>
+              <div>
+                <h3>Fusion back into hidden features</h3>
+                <p>Bridge the refined CNN features into the hidden representation used by the transformer.</p>
+              </div>
+            </div>
+          </div>
+          <div class="variant-grid">
+            <article class="variant-card">
+              <h3><code>pre_hidden</code></h3>
+              <p>
+                Attention is applied on a selected CNN scale and fused into the hidden feature before
+                patch embedding. This keeps the intervention narrow and controlled.
+              </p>
+              <p class="variant-tag">Typical setup: <code>1/8</code></p>
+            </article>
+            <article class="variant-card featured">
+              <h3><code>cnn_fusion</code></h3>
+              <p>
+                Attention is applied after selected CNN stages, the skip features are refined, and the
+                selected scales are fused back into the hidden feature together.
+              </p>
+              <p class="variant-tag">Current default: <code>1/8,1/4,1/2</code></p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Results</p>
+          <h2>What is already established versus what is being explored</h2>
+        </div>
+        <div class="results-grid">
+          <article class="result-card">
+            <span class="result-label">Established reproduction</span>
+            <strong>77.29</strong>
+            <p>Mean Dice on Synapse from the earlier TransUNet reproduction setup.</p>
+          </article>
+          <article class="result-card">
+            <span class="result-label">Established reproduction</span>
+            <strong>30.71</strong>
+            <p>Mean HD95 from the same baseline reproduction.</p>
+          </article>
+          <article class="result-card narrative">
+            <span class="result-label">Current stage</span>
+            <strong>Attention study in progress</strong>
+            <p>
+              The cleaned repo now prioritizes the attention-augmented encoder experiments. The site
+              keeps the legacy baseline numbers visible while the new attention runs are evaluated.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="reproduce" class="section section-alt">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Reproducibility</p>
+          <h2>Two notebooks, two distinct jobs</h2>
+        </div>
+        <div class="workflow-grid">
+          <article class="workflow-card">
+            <h3>1. Drive setup notebook</h3>
+            <p>
+              Use the setup notebook once to cache the Synapse dataset and pretrained R50-ViT-B/16
+              checkpoint to Google Drive.
+            </p>
+            <a href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation/blob/main/notebooks/transunet-drive-data-setup.ipynb" target="_blank" rel="noreferrer">
+              Open notebook file
+            </a>
+          </article>
+          <article class="workflow-card">
+            <h3>2. Main research notebook</h3>
+            <p>
+              Use the Colab research notebook to rebuild the repo, train the CNN-attention variant,
+              evaluate it, and export checkpoints and metrics.
+            </p>
+            <a href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation/blob/main/notebooks/transunet-cnn-attention-research-colab.ipynb" target="_blank" rel="noreferrer">
+              Open notebook file
+            </a>
+          </article>
+          <article class="workflow-card">
+            <h3>Checkpoint resume</h3>
+            <p>
+              Training checkpoints are saved every epoch and can resume after a runtime interruption,
+              which matters for long Colab sessions.
+            </p>
+            <span class="note-inline">Resume granularity: epoch-level</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="repo" class="section">
+      <div class="container repo-grid">
+        <div>
+          <div class="section-heading left">
+            <p class="eyebrow">Repository</p>
+            <h2>What remains in the cleaned codebase</h2>
+          </div>
+          <p class="repo-copy">
+            The repository was reduced to the core research pieces only: model code, dataset loader,
+            split metadata, and Colab-first reproducibility notebooks. AWS deployment assets, helper
+            ops scripts, and unrelated local tooling were removed.
+          </p>
+        </div>
+        <div class="repo-tree">
+          <div><code>datasets/</code> dataset package and Synapse loader</div>
+          <div><code>networks/</code> TransUNet + CNN attention modules</div>
+          <div><code>splits/</code> train and test split metadata</div>
+          <div><code>notebooks/</code> Colab setup and experiment flows</div>
+          <div><code>train.py</code> experiment entrypoint</div>
+          <div><code>test.py</code> evaluation entrypoint</div>
+          <div><code>trainer.py</code> epoch-level resume logic</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>TransUNet CNN attention research project</p>
+      <div class="footer-links">
+        <a href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation" target="_blank" rel="noreferrer">Repository</a>
+        <a href="https://arxiv.org/pdf/2102.04306" target="_blank" rel="noreferrer">Paper</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./main.js"></script>
+</body>
+</html>
