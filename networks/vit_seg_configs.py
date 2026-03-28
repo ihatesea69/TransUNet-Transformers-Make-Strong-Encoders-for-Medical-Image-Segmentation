@@ -21,6 +21,9 @@ def get_b16_config():
     config.decoder_channels = (256, 128, 64, 16)
     config.n_classes = 2
     config.activation = 'softmax'
+    config.attention_mode = 'none'
+    config.attention_scales = ()
+    config.attention_reduction = 16
     return config
 
 
@@ -37,6 +40,9 @@ def get_testing():
     config.transformer.dropout_rate = 0.1
     config.classifier = 'token'
     config.representation_size = None
+    config.attention_mode = 'none'
+    config.attention_scales = ()
+    config.attention_reduction = 16
     return config
 
 def get_r50_b16_config():
@@ -86,6 +92,9 @@ def get_l16_config():
     config.decoder_channels = (256, 128, 64, 16)
     config.n_classes = 2
     config.activation = 'softmax'
+    config.attention_mode = 'none'
+    config.attention_scales = ()
+    config.attention_reduction = 16
     return config
 
 
@@ -126,5 +135,8 @@ def get_h14_config():
     config.transformer.dropout_rate = 0.1
     config.classifier = 'token'
     config.representation_size = None
+    config.attention_mode = 'none'
+    config.attention_scales = ()
+    config.attention_reduction = 16
 
     return config

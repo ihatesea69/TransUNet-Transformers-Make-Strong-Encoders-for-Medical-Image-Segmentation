@@ -11,6 +11,7 @@ from os.path import join as pjoin
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
@@ -142,6 +143,20 @@ class Embeddings(nn.Module):
         if self.hybrid:
             self.hybrid_model = ResNetV2(block_units=config.resnet.num_layers, width_factor=config.resnet.width_factor)
             in_channels = self.hybrid_model.width * 16
+            stage_channels = {
+                "1/2": self.hybrid_model.width,
+                "1/4": self.hybrid_model.width * 4,
+                "1/8": self.hybrid_model.width * 8,
+                "1/16": self.hybrid_model.width * 16,
+            }
+            self.skip_scales = ("1/8", "1/4", "1/2")
+            self.cnn_feature_fusion = CNNFeatureFusion(
+                stage_channels=stage_channels,
+                hidden_channels=in_channels,
+                mode=config.attention_mode,
+                selected_scales=config.attention_scales,
+                reduction=config.attention_reduction,
+            )
         self.patch_embeddings = Conv2d(in_channels=in_channels,
                                        out_channels=config.hidden_size,
                                        kernel_size=patch_size,
@@ -153,7 +168,9 @@ class Embeddings(nn.Module):
 
     def forward(self, x):
         if self.hybrid:
-            x, features = self.hybrid_model(x)
+            x, feature_map = self.hybrid_model(x)
+            x, feature_map = self.cnn_feature_fusion(x, feature_map)
+            features = [feature_map[scale] for scale in self.skip_scales]
         else:
             features = None
         x = self.patch_embeddings(x)  # (B, hidden. n_patches^(1/2), n_patches^(1/2))
@@ -279,6 +296,107 @@ class Conv2dReLU(nn.Sequential):
         bn = nn.BatchNorm2d(out_channels)
 
         super(Conv2dReLU, self).__init__(conv, bn, relu)
+
+
+class ChannelAttention2d(nn.Module):
+    def __init__(self, channels, reduction):
+        super().__init__()
+        reduced_channels = max(channels // reduction, 1)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.mlp = nn.Sequential(
+            nn.Conv2d(channels, reduced_channels, kernel_size=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(reduced_channels, channels, kernel_size=1, bias=False),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        attention = self.mlp(self.avg_pool(x)) + self.mlp(self.max_pool(x))
+        return self.sigmoid(attention)
+
+
+class SpatialAttention2d(nn.Module):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        padding = kernel_size // 2
+        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_map = torch.mean(x, dim=1, keepdim=True)
+        max_map, _ = torch.max(x, dim=1, keepdim=True)
+        attention = self.conv(torch.cat([avg_map, max_map], dim=1))
+        return self.sigmoid(attention)
+
+
+class ResidualAttention2d(nn.Module):
+    def __init__(self, channels, reduction):
+        super().__init__()
+        self.channel_attention = ChannelAttention2d(channels, reduction)
+        self.spatial_attention = SpatialAttention2d()
+
+    def forward(self, x):
+        refined = x * self.channel_attention(x)
+        refined = refined * self.spatial_attention(refined)
+        return x + refined
+
+
+class FeatureFusionBridge(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.projection = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x, target_size):
+        x = self.projection(x)
+        if x.shape[2:] != target_size:
+            x = F.interpolate(x, size=target_size, mode="bilinear", align_corners=False)
+        return x
+
+
+class CNNFeatureFusion(nn.Module):
+    def __init__(self, stage_channels, hidden_channels, mode, selected_scales, reduction):
+        super().__init__()
+        self.mode = mode
+        self.selected_scales = tuple(selected_scales)
+        self.attention_blocks = nn.ModuleDict()
+        self.hidden_bridges = nn.ModuleDict()
+        self.fusion_weights = nn.ParameterDict()
+
+        if self.mode == "none":
+            return
+
+        for scale in self.selected_scales:
+            channels = stage_channels[scale]
+            self.attention_blocks[scale] = ResidualAttention2d(channels, reduction)
+            self.hidden_bridges[scale] = FeatureFusionBridge(channels, hidden_channels)
+            self.fusion_weights[scale] = nn.Parameter(torch.tensor(1.0))
+
+    def forward(self, hidden_feature, feature_map):
+        if self.mode == "none" or not self.selected_scales:
+            return hidden_feature, feature_map
+
+        updated_feature_map = dict(feature_map)
+        hidden_contributions = []
+        target_size = hidden_feature.shape[2:]
+
+        for scale in self.selected_scales:
+            refined_feature = self.attention_blocks[scale](feature_map[scale])
+            hidden_contribution = self.hidden_bridges[scale](refined_feature, target_size)
+            hidden_contributions.append(self.fusion_weights[scale] * hidden_contribution)
+
+            if self.mode == "cnn_fusion":
+                updated_feature_map[scale] = refined_feature
+
+        if hidden_contributions:
+            fused_hidden = torch.stack(hidden_contributions, dim=0).mean(dim=0)
+            hidden_feature = hidden_feature + fused_hidden
+
+        return hidden_feature, updated_feature_map
 
 
 class DecoderBlock(nn.Module):

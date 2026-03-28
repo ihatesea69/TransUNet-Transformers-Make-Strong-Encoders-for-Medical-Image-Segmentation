@@ -1,196 +1,139 @@
-# TransUNet: Transformers Make Strong Encoders for Medical Image Segmentation
+# Attention-Augmented TransUNet for Synapse Segmentation
 
-PyTorch reproduction of the paper [TransUNet: Transformers Make Strong Encoders for Medical Image Segmentation](https://arxiv.org/abs/2102.04306) (Chen et al., 2021), trained and evaluated on the **Synapse multi-organ segmentation** dataset.
+PyTorch research repo for extending TransUNet on the Synapse multi-organ segmentation benchmark, with the current focus on CNN-guided attention injection inside the hybrid R50-ViT encoder.
 
-This repository reproduces the key results from the original paper, achieving **77.29% mean Dice score** and **30.71 mean HD95** on the Synapse dataset (paper reports 77.48% / 31.69).
+This cleaned version keeps only the research codepath, lightweight utilities, and reproducibility notebooks. AWS/SageMaker and CloudFormation deployment assets were intentionally removed so the repository is easier to read, reproduce, and push to GitHub.
 
----
+## Research focus
 
-## Table of Contents
+This repo currently centers on two attention variants added on top of the hybrid ResNet-50 + ViT-B/16 encoder:
 
-- [Introduction](#introduction)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Data Preparation](#data-preparation)
-- [Pre-trained Models](#pre-trained-models)
-- [Training](#training)
-- [Evaluation](#evaluation)
-- [Results](#results)
-- [AWS SageMaker](#aws-sagemaker)
-- [Citation](#citation)
-- [Acknowledgments](#acknowledgments)
-- [License](#license)
+- `pre_hidden`: refine selected CNN scales and fuse them into the hidden feature before patch projection
+- `cnn_fusion`: refine selected CNN skip features and fuse multiple CNN scales back into the hidden feature
 
----
+Relevant implementation files:
 
-## Introduction
+- [networks/vit_seg_modeling.py](networks/vit_seg_modeling.py)
+- [networks/vit_seg_modeling_resnet_skip.py](networks/vit_seg_modeling_resnet_skip.py)
+- [experiment_utils.py](experiment_utils.py)
+- [train.py](train.py)
+- [test.py](test.py)
 
-TransUNet combines the strengths of Transformers and U-Net for medical image segmentation. It uses a Vision Transformer (ViT) as the encoder to capture global context, while leveraging a CNN-based decoder with skip connections to recover fine-grained spatial details. The hybrid ResNet-ViT encoder (R50-ViT-B/16) first extracts feature maps through a ResNet-50 backbone, then feeds them into a Transformer for self-attention modeling.
+## Repository layout
 
----
-
-## Architecture
-
-TransUNet follows an encoder-decoder design:
-
-1. **Encoder**: Images are split into patches and processed by a hybrid ResNet-50 + ViT-B/16 backbone pre-trained on ImageNet-21k. The Transformer layers model long-range dependencies across patches.
-2. **Decoder**: A cascaded upsampler progressively recovers the spatial resolution, guided by skip connections from the CNN encoder stages.
-3. **Segmentation Head**: A 1x1 convolution produces per-pixel class predictions.
-
----
-
-## Requirements
-
-- Python >= 3.7
-- PyTorch >= 1.9
-- CUDA-compatible GPU (recommended)
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
+```text
+datasets/          dataset package and Synapse loader
+splits/            explicit train/test split metadata
+networks/          TransUNet model + hybrid encoder attention modules
+notebooks/         Colab notebooks for Drive bootstrap and end-to-end experiments
+train.py           training entrypoint
+test.py            evaluation entrypoint
+trainer.py         training loop with epoch-level resume checkpointing
 ```
 
-Or use the provided setup script (requires [uv](https://docs.astral.sh/uv/)):
+## Environment
 
-```bash
-scripts\setup_env.bat
-```
+Recommended:
 
----
+- Python 3.10 to 3.12
+- CUDA-enabled PyTorch
+- `pip install -r requirements.txt`
 
-## Data Preparation
+Main Python dependencies are tracked in [requirements.txt](requirements.txt). PyTorch and torchvision should match your CUDA runtime.
 
-This project uses the **Synapse multi-organ segmentation** dataset (BTCV). The preprocessed data is publicly available:
+## Data
 
-- [BTCV preprocessed data](https://drive.google.com/drive/folders/1ACJEoTp-uqfFJ73qS3eUObQh52nGuzCd?usp=sharing)
-- [ACDC data](https://drive.google.com/drive/folders/1KQcrci7aKsYZi1hQoZ3T3QUtcy7b--n4?usp=drive_link)
+The repo expects preprocessed Synapse data in:
 
-Download and place the data under `data/Synapse/`:
-
-```
+```text
 data/
   Synapse/
     train_npz/
-      case0005_slice000.npz
-      ...
     test_vol_h5/
-      case0001.npy.h5
-      ...
 ```
 
-Alternatively, use the download script:
+Recommended workflow:
 
-```bash
-python scripts/download_data.py --dataset Synapse
+- use [notebooks/transunet-drive-data-setup.ipynb](notebooks/transunet-drive-data-setup.ipynb) to cache the dataset to Google Drive for Colab
+- or prepare the Synapse layout manually under `data/Synapse`
+
+## Pretrained weights
+
+The hybrid encoder expects the R50-ViT-B/16 ImageNet-21k checkpoint under:
+
+```text
+model/vit_checkpoint/imagenet21k/
+  R50+ViT-B_16.npz
+  R50-ViT-B_16.npz
 ```
 
----
+Recommended workflow:
 
-## Pre-trained Models
+- use [notebooks/transunet-drive-data-setup.ipynb](notebooks/transunet-drive-data-setup.ipynb) to cache the pretrained weight to Google Drive for Colab
+- or place the checkpoint manually under `model/vit_checkpoint/imagenet21k/`
 
-Download Google pre-trained ViT models from [this link](https://console.cloud.google.com/storage/vit_models/) (R50-ViT-B_16 recommended):
-
-```bash
-wget https://storage.googleapis.com/vit_models/imagenet21k/R50+ViT-B_16.npz
-mkdir -p model/vit_checkpoint/imagenet21k
-mv R50+ViT-B_16.npz model/vit_checkpoint/imagenet21k/R50+ViT-B_16.npz
-```
-
-Or use the download script:
-
-```bash
-python scripts/download_weights.py
-```
-
----
+Both filename aliases are supported because different codepaths and notebooks reference both forms.
 
 ## Training
 
-Train on the Synapse dataset with the default configuration (R50-ViT-B/16, batch size 24, 150 epochs):
+Example: run the current research default (`cnn_fusion` on `1/8,1/4,1/2`)
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python train.py --dataset Synapse --vit_name R50-ViT-B_16
+python train.py ^
+  --dataset Synapse ^
+  --vit_name R50-ViT-B_16 ^
+  --attention_mode cnn_fusion ^
+  --attention_scales 1/8,1/4,1/2
 ```
 
-Key hyperparameters can be adjusted via command-line arguments:
-
-| Argument | Default | Description |
-|---|---|---|
-| `--batch_size` | 24 | Batch size per GPU |
-| `--max_epochs` | 150 | Number of training epochs |
-| `--base_lr` | 0.01 | Initial learning rate |
-| `--img_size` | 224 | Input image resolution |
-| `--n_skip` | 3 | Number of skip connections |
-
-The batch size can be reduced to 12 or 6 to save memory (decrease `base_lr` linearly).
-
-On Windows, you can use the provided script:
+Alternative attention experiment:
 
 ```bash
-scripts\run_train.bat
+python train.py ^
+  --dataset Synapse ^
+  --vit_name R50-ViT-B_16 ^
+  --attention_mode pre_hidden ^
+  --attention_scales 1/8
 ```
 
----
+Baseline ablation:
+
+```bash
+python train.py --dataset Synapse --vit_name R50-ViT-B_16 --attention_mode none
+```
 
 ## Evaluation
 
-Run evaluation on the Synapse test set:
-
 ```bash
-python test.py --dataset Synapse --vit_name R50-ViT-B_16
+python test.py ^
+  --dataset Synapse ^
+  --vit_name R50-ViT-B_16 ^
+  --attention_mode cnn_fusion ^
+  --attention_scales 1/8,1/4,1/2
 ```
 
-To save segmentation predictions as NIfTI files:
+Save NIfTI predictions:
 
 ```bash
 python test.py --dataset Synapse --vit_name R50-ViT-B_16 --is_savenii
 ```
 
-On Windows:
+## Colab notebooks
 
-```bash
-scripts\run_test.bat
-```
+For reproducibility on Google Colab:
 
----
+- [notebooks/transunet-drive-data-setup.ipynb](notebooks/transunet-drive-data-setup.ipynb): prepare the Synapse dataset and pretrained TransUNet weight on Google Drive
+- [notebooks/transunet-cnn-attention-research-colab.ipynb](notebooks/transunet-cnn-attention-research-colab.ipynb): run the TransUNet CNN-attention experiment end-to-end on Colab with live logs and checkpoint resume
 
-## Results
+## Notes
 
-Reproduction results on the Synapse multi-organ segmentation dataset compared with the original paper:
-
-| Method | Mean Dice (%) | Mean HD95 (mm) |
-|---|---|---|
-| TransUNet (paper) | 77.48 | 31.69 |
-| **This reproduction** | **77.29** | **30.71** |
-
-**Configuration**: R50-ViT-B/16, image size 224x224, batch size 24, 150 epochs, learning rate 0.01.
-
----
-
-## AWS SageMaker
-
-This repository includes scripts for training on AWS SageMaker. See the `scripts/` directory:
-
-- `scripts/sagemaker_run.py` -- Submit a SageMaker training job
-- `scripts/sagemaker_test.py` -- Submit a SageMaker evaluation job
-- `scripts/sagemaker_trust_policy.json` -- IAM trust policy for the SageMaker execution role
-
-Additional SageMaker utilities:
-
-- `scripts/check_s3.py` -- Verify S3 bucket contents
-- `scripts/delete_job.py` -- Delete a SageMaker training job
-- `scripts/delete_s3_output.py` -- Clean up S3 output artifacts
-- `scripts/get_logs.py` -- Fetch CloudWatch logs for a training job
-- `scripts/get_results.py` -- Download results from a completed job
-
-Hyperparameter configuration for SageMaker is stored in `config.yaml`.
-
----
+- `trainer.py` saves `latest_checkpoint.pth` every epoch and can resume automatically.
+- Package markers were added to `datasets/` and `networks/` so Colab does not confuse them with third-party packages.
+- The repo intentionally no longer contains AWS deployment code, CloudFormation templates, or SageMaker helpers.
 
 ## Citation
 
-If you find this work useful, please cite the original paper:
+If you use this repo, cite the original TransUNet work and document the attention extension separately in your report or paper.
 
 ```bibtex
 @article{chen2024transunet,
@@ -198,30 +141,10 @@ If you find this work useful, please cite the original paper:
   author={Chen, Jieneng and Mei, Jieru and Li, Xianhang and Lu, Yongyi and Yu, Qihang and Wei, Qingyue and Luo, Xiangde and Xie, Yutong and Adeli, Ehsan and Wang, Yan and others},
   journal={Medical Image Analysis},
   pages={103280},
-  year={2024},
-  publisher={Elsevier}
+  year={2024}
 }
 ```
-
-```bibtex
-@article{chen2021transunet,
-  title={TransUNet: Transformers Make Strong Encoders for Medical Image Segmentation},
-  author={Chen, Jieneng and Lu, Yongyi and Yu, Qihang and Luo, Xiangde and Adeli, Ehsan and Wang, Yan and Lu, Le and Yuille, Alan L. and Zhou, Yuyin},
-  journal={arXiv preprint arXiv:2102.04306},
-  year={2021}
-}
-```
-
----
-
-## Acknowledgments
-
-- [Google ViT](https://github.com/google-research/vision_transformer)
-- [ViT-pytorch](https://github.com/jeonsworld/ViT-pytorch)
-- [segmentation_models.pytorch](https://github.com/qubvel/segmentation_models.pytorch)
-
----
 
 ## License
 
-This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+Apache License 2.0. See [LICENSE](LICENSE).

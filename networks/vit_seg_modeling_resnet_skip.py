@@ -139,22 +139,27 @@ class ResNetV2(nn.Module):
                 ))),
         ]))
 
+    @staticmethod
+    def _align_feature(x, target_size):
+        if x.size(2) != target_size:
+            pad = target_size - x.size(2)
+            assert 0 < pad < 3, "x {} should {}".format(x.size(), target_size)
+            feat = torch.zeros((x.size(0), x.size(1), target_size, target_size), device=x.device, dtype=x.dtype)
+            feat[:, :, 0:x.size(2), 0:x.size(3)] = x
+            return feat
+        return x
+
     def forward(self, x):
-        features = []
-        b, c, in_size, _ = x.size()
+        feature_map = {}
+        _, _, in_size, _ = x.size()
         x = self.root(x)
-        features.append(x)
+        feature_map["1/2"] = x
         x = nn.MaxPool2d(kernel_size=3, stride=2, padding=0)(x)
         for i in range(len(self.body)-1):
             x = self.body[i](x)
+            scale = "1/4" if i == 0 else "1/8"
             right_size = int(in_size / 4 / (i+1))
-            if x.size()[2] != right_size:
-                pad = right_size - x.size()[2]
-                assert pad < 3 and pad > 0, "x {} should {}".format(x.size(), right_size)
-                feat = torch.zeros((b, x.size()[1], right_size, right_size), device=x.device)
-                feat[:, :, 0:x.size()[2], 0:x.size()[3]] = x[:]
-            else:
-                feat = x
-            features.append(feat)
+            feature_map[scale] = self._align_feature(x, right_size)
         x = self.body[-1](x)
-        return x, features[::-1]
+        feature_map["1/16"] = self._align_feature(x, int(in_size / 16))
+        return feature_map["1/16"], feature_map

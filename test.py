@@ -9,7 +9,8 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from datasets.dataset_synapse import Synapse_dataset
+from experiment_utils import apply_attention_config, build_attention_suffix, parse_attention_scales
+from datasets.synapse import Synapse_dataset
 from utils import test_single_volume
 from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
@@ -22,7 +23,7 @@ parser.add_argument('--dataset', type=str,
 parser.add_argument('--num_classes', type=int,
                     default=4, help='output channel of network')
 parser.add_argument('--list_dir', type=str,
-                    default='./lists/lists_Synapse', help='list dir')
+                    default='./splits/synapse', help='split dir')
 
 parser.add_argument('--max_iterations', type=int,default=20000, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int, default=30, help='maximum epoch number to train')
@@ -39,6 +40,14 @@ parser.add_argument('--deterministic', type=int,  default=1, help='whether use d
 parser.add_argument('--base_lr', type=float,  default=0.01, help='segmentation network learning rate')
 parser.add_argument('--seed', type=int, default=1234, help='random seed')
 parser.add_argument('--vit_patches_size', type=int, default=16, help='vit_patches_size, default is 16')
+parser.add_argument('--attention_mode', type=str,
+                    default='none', choices=['none', 'pre_hidden', 'cnn_fusion'],
+                    help='where to inject CNN attention before the transformer')
+parser.add_argument('--attention_scales', type=str,
+                    default='',
+                    help='comma-separated CNN scales, e.g. 1/8,1/4,1/2')
+parser.add_argument('--attention_reduction', type=int,
+                    default=16, help='channel reduction used by the CNN attention blocks')
 args = parser.parse_args()
 
 
@@ -75,24 +84,28 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
 
     dataset_config = {
         'Synapse': {
             'Dataset': Synapse_dataset,
             'volume_path': './data/Synapse/test_vol_h5',
-            'list_dir': './lists/lists_Synapse',
+            'list_dir': './splits/synapse',
             'num_classes': 9,
             'z_spacing': 1,
         },
     }
     dataset_name = args.dataset
     args.num_classes = dataset_config[dataset_name]['num_classes']
-    args.volume_path = os.environ.get('SM_CHANNEL_DATA', args.volume_path)
+    args.volume_path = os.environ.get('TRANSUNET_TEST_DATA_DIR', args.volume_path)
     args.Dataset = dataset_config[dataset_name]['Dataset']
     args.list_dir = dataset_config[dataset_name]['list_dir']
     args.z_spacing = dataset_config[dataset_name]['z_spacing']
     args.is_pretrain = True
+    args.attention_scales = parse_attention_scales(args.attention_mode, args.attention_scales)
+    if args.attention_mode != 'none' and 'R50' not in args.vit_name:
+        raise ValueError('CNN attention modes require a hybrid R50-ViT backbone.')
 
     # name the same snapshot defined in train script!
     args.exp = 'TU_' + dataset_name + str(args.img_size)
@@ -108,21 +121,32 @@ if __name__ == "__main__":
     snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
     snapshot_path = snapshot_path + '_'+str(args.img_size)
     snapshot_path = snapshot_path + '_s'+str(args.seed) if args.seed!=1234 else snapshot_path
+    snapshot_path = snapshot_path + build_attention_suffix(
+        args.attention_mode,
+        args.attention_scales,
+        args.attention_reduction,
+    )
 
     config_vit = CONFIGS_ViT_seg[args.vit_name]
     config_vit.n_classes = args.num_classes
     config_vit.n_skip = args.n_skip
     config_vit.patches.size = (args.vit_patches_size, args.vit_patches_size)
+    apply_attention_config(
+        config_vit,
+        mode=args.attention_mode,
+        scales=args.attention_scales,
+        reduction=args.attention_reduction,
+    )
     if args.vit_name.find('R50') !=-1:
         config_vit.patches.grid = (int(args.img_size/args.vit_patches_size), int(args.img_size/args.vit_patches_size))
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).to(device)
 
-    sm_model_dir = os.environ.get('SM_CHANNEL_MODEL', None)
-    if sm_model_dir:
-        snapshot = os.path.join(sm_model_dir, 'epoch_' + str(args.max_epochs - 1) + '.pth')
+    model_dir = os.environ.get('TRANSUNET_MODEL_DIR', None)
+    if model_dir:
+        snapshot = os.path.join(model_dir, 'epoch_' + str(args.max_epochs - 1) + '.pth')
         if not os.path.exists(snapshot):
-            snapshot = os.path.join(sm_model_dir, 'best_model.pth')
+            snapshot = os.path.join(model_dir, 'best_model.pth')
     else:
         snapshot = os.path.join(snapshot_path, 'best_model.pth')
         if not os.path.exists(snapshot): snapshot = snapshot.replace('best_model', 'epoch_'+str(args.max_epochs-1))

@@ -16,7 +16,7 @@ from utils import DiceLoss
 from torchvision import transforms
 
 def trainer_synapse(args, model, snapshot_path):
-    from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
+    from datasets.synapse import Synapse_dataset, RandomGenerator
     logging.basicConfig(filename=snapshot_path + "/log.txt", level=logging.INFO,
                         format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
@@ -24,9 +24,11 @@ def trainer_synapse(args, model, snapshot_path):
     base_lr = args.base_lr
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
-    checkpoint_dir = os.environ.get('SM_CHECKPOINT_DIR', snapshot_path)
+    device = next(model.parameters()).device
+    checkpoint_dir = os.environ.get('TRANSUNET_CHECKPOINT_DIR', snapshot_path)
     # max_iterations = args.max_iterations
     db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, split="train",
+                               max_samples=args.max_train_samples,
                                transform=transforms.Compose(
                                    [RandomGenerator(output_size=[args.img_size, args.img_size])]))
     print("The length of train set is: {}".format(len(db_train)))
@@ -34,9 +36,9 @@ def trainer_synapse(args, model, snapshot_path):
     def worker_init_fn(worker_id):
         random.seed(args.seed + worker_id)
 
-    trainloader = DataLoader(db_train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True,
+    trainloader = DataLoader(db_train, batch_size=batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=(device.type == 'cuda'),
                              worker_init_fn=worker_init_fn)
-    if args.n_gpu > 1:
+    if args.n_gpu > 1 and device.type == 'cuda':
         model = nn.DataParallel(model)
     model.train()
     ce_loss = CrossEntropyLoss()
@@ -62,7 +64,8 @@ def trainer_synapse(args, model, snapshot_path):
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
             image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
-            image_batch, label_batch = image_batch.cuda(), label_batch.cuda()
+            image_batch = image_batch.to(device)
+            label_batch = label_batch.to(device)
             outputs = model(image_batch)
             loss_ce = ce_loss(outputs, label_batch[:].long())
             loss_dice = dice_loss(outputs, label_batch, softmax=True)
@@ -82,12 +85,13 @@ def trainer_synapse(args, model, snapshot_path):
             logging.info('iteration %d : loss : %f, loss_ce: %f' % (iter_num, loss.item(), loss_ce.item()))
 
             if iter_num % 20 == 0:
-                image = image_batch[1, 0:1, :, :]
+                vis_index = 1 if image_batch.size(0) > 1 else 0
+                image = image_batch[vis_index, 0:1, :, :]
                 image = (image - image.min()) / (image.max() - image.min())
                 writer.add_image('train/Image', image, iter_num)
                 outputs = torch.argmax(torch.softmax(outputs, dim=1), dim=1, keepdim=True)
-                writer.add_image('train/Prediction', outputs[1, ...] * 50, iter_num)
-                labs = label_batch[1, ...].unsqueeze(0) * 50
+                writer.add_image('train/Prediction', outputs[vis_index, ...] * 50, iter_num)
+                labs = label_batch[vis_index, ...].unsqueeze(0) * 50
                 writer.add_image('train/GroundTruth', labs, iter_num)
 
         # Save checkpoint for Spot resume

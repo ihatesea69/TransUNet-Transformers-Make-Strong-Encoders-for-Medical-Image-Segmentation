@@ -1,4 +1,4 @@
-numpy==1.23.5
+numpy>=1.26,<2
 tensorboard
 tensorboardX
 ml-collections
@@ -6,3 +6,5 @@ medpy
 SimpleITK
 scipy
 h5py
+tqdm
+gdown

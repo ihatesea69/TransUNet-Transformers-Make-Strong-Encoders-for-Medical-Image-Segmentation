@@ -13,10 +13,15 @@ build/
 venv/
 env/
 
+# Local agent/tool state
+.omx/
+
 # Data and model weights (too large for git)
 data/
 model/
 predictions/
+artifacts/
+results/
 
 # Logs
 test_log/
