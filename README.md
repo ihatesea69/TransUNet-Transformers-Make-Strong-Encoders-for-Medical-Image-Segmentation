@@ -1,21 +1,22 @@
-# Attention-Augmented TransUNet for Synapse Segmentation
+# MSCAF-TransUNet for Synapse Segmentation
 
-PyTorch research repo for extending TransUNet on the Synapse multi-organ segmentation benchmark, with the current focus on CNN-guided attention injection inside the hybrid R50-ViT encoder.
+PyTorch research repo for extending TransUNet on the Synapse multi-organ segmentation benchmark, with the current focus on **MSCAF-TransUNet**: Multi-Scale CNN Attention Fusion inside the hybrid R50-ViT encoder.
 
 This cleaned version keeps only the research codepath, lightweight utilities, and reproducibility notebooks. AWS/SageMaker and CloudFormation deployment assets were intentionally removed so the repository is easier to read, reproduce, and push to GitHub.
 
 ## Research focus
 
-This repo currently centers on two attention variants added on top of the hybrid ResNet-50 + ViT-B/16 encoder:
+This repo currently centers on **MSCAF-TransUNet** and its related ablations on top of the hybrid ResNet-50 + ViT-B/16 encoder:
 
 - `pre_hidden`: refine selected CNN scales and fuse them into the hidden feature before patch projection
 - `cnn_fusion`: refine selected CNN skip features and fuse multiple CNN scales back into the hidden feature
 
 ## Current result snapshot
 
-Latest evaluated attention run:
+Latest evaluated **MSCAF-TransUNet** run:
 
-- Variant: `cnn_fusion`
+- Method: `MSCAF-TransUNet`
+- Implementation mode: `cnn_fusion`
 - Scales: `1/8,1/4,1/2`
 - Mean Dice: `76.61%`
 - Mean HD95: `28.80`
@@ -29,10 +30,10 @@ Reference baseline from the earlier cleaned reproduction:
 
 | Framework | Encoder | Decoder | Average DSC ↑ | HD ↓ | Aorta | Gallbladder | Kidney (L) | Kidney (R) | Liver | Pancreas | Spleen | Stomach |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Ours (`cnn_fusion`, `1/8,1/4,1/2`)** | R50-ViT | CUP | 76.61 | **28.80** | 86.72 | 57.15 | 79.33 | 75.14 | **94.40** | **57.36** | **86.54** | **76.20** |
+| **MSCAF-TransUNet (Ours)** | R50-ViT | CUP | 76.61 | **28.80** | 86.72 | 57.15 | 79.33 | 75.14 | **94.40** | **57.36** | **86.54** | **76.20** |
 | TransUNet (paper) | R50-ViT | CUP | **77.48** | 31.69 | **87.23** | **63.13** | **81.87** | **77.02** | 94.08 | 55.86 | 85.08 | 75.62 |
 
-Bold values indicate the better score between the current attention run and the original paper row. The current `cnn_fusion` run improves HD95 and four organ-wise Dice scores (`Liver`, `Pancreas`, `Spleen`, `Stomach`) while still trailing the original paper on mean Dice.
+Bold values indicate the better score between **MSCAF-TransUNet** and the original paper row. The current method improves HD95 and four organ-wise Dice scores (`Liver`, `Pancreas`, `Spleen`, `Stomach`) while still trailing the original paper on mean Dice.
 
 Relevant implementation files:
 
@@ -99,7 +100,7 @@ Both filename aliases are supported because different codepaths and notebooks re
 
 ## Training
 
-Example: run the current research default (`cnn_fusion` on `1/8,1/4,1/2`)
+Example: run **MSCAF-TransUNet** (`cnn_fusion` on `1/8,1/4,1/2`)
 
 ```bash
 python train.py ^
@@ -146,7 +147,7 @@ python test.py --dataset Synapse --vit_name R50-ViT-B_16 --is_savenii
 For reproducibility on Google Colab:
 
 - [notebooks/transunet-drive-data-setup.ipynb](notebooks/transunet-drive-data-setup.ipynb): prepare the Synapse dataset and pretrained TransUNet weight on Google Drive
-- [notebooks/transunet-cnn-attention-research-colab.ipynb](notebooks/transunet-cnn-attention-research-colab.ipynb): run the TransUNet CNN-attention experiment end-to-end on Colab with live logs and checkpoint resume
+- [notebooks/transunet-cnn-attention-research-colab.ipynb](notebooks/transunet-cnn-attention-research-colab.ipynb): run the MSCAF-TransUNet experiment end-to-end on Colab with live logs and checkpoint resume
 
 ## Notes
 

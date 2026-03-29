@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TransUNet with CNN Attention</title>
+  <title>MSCAF-TransUNet</title>
   <meta
     name="description"
-    content="Research project page for TransUNet with CNN-guided attention on the Synapse multi-organ segmentation benchmark."
+    content="Research project page for MSCAF-TransUNet, a Multi-Scale CNN Attention Fusion extension of TransUNet on the Synapse benchmark."
   >
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#top">TransUNet Research</a>
+      <a class="brand" href="#top">MSCAF-TransUNet</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
         Menu
       </button>
@@ -38,10 +38,10 @@
       <div class="container hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">Medical Image Segmentation Research</p>
-          <h1>TransUNet with CNN-Guided Attention for Synapse Segmentation</h1>
+          <h1>MSCAF-TransUNet for Synapse Segmentation</h1>
           <p class="lead">
-            A cleaned research codebase that extends the hybrid R50-ViT TransUNet encoder with
-            CNN attention injection strategies, then packages the full experiment for reproducible
+            A cleaned research codebase built around MSCAF-TransUNet, a Multi-Scale CNN Attention
+            Fusion extension of the hybrid R50-ViT TransUNet encoder, then packaged for reproducible
             Google Colab runs.
           </p>
           <div class="hero-actions">
@@ -60,8 +60,8 @@
         </div>
         <aside class="hero-panel">
           <div class="panel-card panel-emphasis">
-            <h2>Current Research Default</h2>
-            <p><code>cnn_fusion</code> on scales <code>1/8, 1/4, 1/2</code></p>
+            <h2>Current Method</h2>
+            <p><code>MSCAF-TransUNet</code> using <code>cnn_fusion</code> on scales <code>1/8, 1/4, 1/2</code></p>
             <div class="mini-grid">
               <div>
                 <span class="mini-label">Current run</span>
@@ -73,7 +73,7 @@
               </div>
             </div>
             <p class="panel-note">
-              These numbers come from the current CNN-fusion attention experiment. The earlier
+              These numbers come from the current MSCAF-TransUNet run. The earlier
               cleaned baseline remains in the repo as a reference point.
             </p>
           </div>
@@ -117,7 +117,7 @@
       <div class="container">
         <div class="section-heading">
           <p class="eyebrow">Attention Update</p>
-          <h2>The two attention paths added to TransUNet</h2>
+          <h2>The attention design behind MSCAF-TransUNet</h2>
         </div>
         <div class="attention-layout">
           <div class="attention-rail">
@@ -173,14 +173,14 @@
         </div>
         <div class="results-grid">
           <article class="result-card">
-            <span class="result-label">Current attention run</span>
+            <span class="result-label">MSCAF-TransUNet</span>
             <strong>76.61</strong>
-            <p>Mean Dice for <code>cnn_fusion</code> with scales <code>1/8,1/4,1/2</code>.</p>
+            <p>Mean Dice for the current multi-scale CNN attention fusion configuration.</p>
           </article>
           <article class="result-card">
-            <span class="result-label">Current attention run</span>
+            <span class="result-label">MSCAF-TransUNet</span>
             <strong>28.80</strong>
-            <p>Mean HD95 from the same CNN-attention evaluation.</p>
+            <p>Mean HD95 from the same evaluation run.</p>
           </article>
           <article class="result-card narrative">
             <span class="result-label">Comparison</span>
@@ -214,7 +214,7 @@
           <article class="workflow-card">
             <h3>2. Main research notebook</h3>
             <p>
-              Use the Colab research notebook to rebuild the repo, train the CNN-attention variant,
+              Use the Colab research notebook to rebuild the repo, train MSCAF-TransUNet,
               evaluate it, and export checkpoints and metrics.
             </p>
             <a href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation/blob/main/notebooks/transunet-cnn-attention-research-colab.ipynb" target="_blank" rel="noreferrer">
@@ -261,7 +261,7 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>TransUNet CNN attention research project</p>
+      <p>MSCAF-TransUNet research project</p>
       <div class="footer-links">
         <a href="https://github.com/ihatesea69/TransUNet-Transformers-Make-Strong-Encoders-for-Medical-Image-Segmentation" target="_blank" rel="noreferrer">Repository</a>
         <a href="https://arxiv.org/pdf/2102.04306" target="_blank" rel="noreferrer">Paper</a>
