@@ -143,15 +143,40 @@ if __name__ == "__main__":
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).to(device)
 
     model_dir = os.environ.get('TRANSUNET_MODEL_DIR', None)
+    checkpoint_dir = os.environ.get('TRANSUNET_CHECKPOINT_DIR', None)
+
     if model_dir:
         snapshot = os.path.join(model_dir, 'epoch_' + str(args.max_epochs - 1) + '.pth')
         if not os.path.exists(snapshot):
             snapshot = os.path.join(model_dir, 'best_model.pth')
     else:
         snapshot = os.path.join(snapshot_path, 'best_model.pth')
-        if not os.path.exists(snapshot): snapshot = snapshot.replace('best_model', 'epoch_'+str(args.max_epochs-1))
-    net.load_state_dict(torch.load(snapshot, map_location=device))
+        if not os.path.exists(snapshot):
+            snapshot = snapshot.replace('best_model', 'epoch_' + str(args.max_epochs - 1))
+
     snapshot_name = snapshot_path.split('/')[-1]
+    if checkpoint_dir:
+        resume_snapshot = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
+    else:
+        resume_snapshot = None
+
+    if os.path.exists(snapshot):
+        state = torch.load(snapshot, map_location=device)
+        net.load_state_dict(state)
+    elif resume_snapshot and os.path.exists(resume_snapshot):
+        state = torch.load(resume_snapshot, map_location=device)
+        if isinstance(state, dict) and 'model_state' in state:
+            net.load_state_dict(state['model_state'])
+        else:
+            net.load_state_dict(state)
+        snapshot_name = os.path.basename(checkpoint_dir.rstrip('/\\'))
+        logging_message = f"Using resume checkpoint from {resume_snapshot}"
+        print(logging_message)
+    else:
+        raise FileNotFoundError(
+            f"No evaluation checkpoint found. Checked {snapshot}"
+            + (f" and {resume_snapshot}" if resume_snapshot else "")
+        )
 
     log_folder = './test_log/test_log_' + args.exp
     os.makedirs(log_folder, exist_ok=True)
