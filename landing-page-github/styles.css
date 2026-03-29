@@ -240,6 +240,15 @@ h3 {
   font-size: 0.95rem;
 }
 
+.panel-wins {
+  margin: 0 0 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.95rem;
+  background: rgba(220, 238, 237, 0.58);
+  color: var(--text);
+  line-height: 1.6;
+}
+
 .section {
   padding: 4.5rem 0;
 }

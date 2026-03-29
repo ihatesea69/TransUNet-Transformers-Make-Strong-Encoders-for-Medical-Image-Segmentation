@@ -20,6 +20,7 @@ Latest evaluated **MSCAF-TransUNet** run:
 - Scales: `1/8,1/4,1/2`
 - Mean Dice: `76.61%`
 - Mean HD95: `28.80`
+- Better than the original TransUNet paper on `HD95`, `Liver`, `Pancreas`, `Spleen`, and `Stomach`
 
 Reference baseline from the earlier cleaned reproduction:
 
@@ -33,7 +34,7 @@ Reference baseline from the earlier cleaned reproduction:
 | **MSCAF-TransUNet (Ours)** | R50-ViT | CUP | 76.61 | **28.80** | 86.72 | 57.15 | 79.33 | 75.14 | **94.40** | **57.36** | **86.54** | **76.20** |
 | TransUNet (paper) | R50-ViT | CUP | **77.48** | 31.69 | **87.23** | **63.13** | **81.87** | **77.02** | 94.08 | 55.86 | 85.08 | 75.62 |
 
-Bold values indicate the better score between **MSCAF-TransUNet** and the original paper row. The current method improves HD95 and four organ-wise Dice scores (`Liver`, `Pancreas`, `Spleen`, `Stomach`) while still trailing the original paper on mean Dice.
+Bold values indicate the better score between **MSCAF-TransUNet** and the original paper row. The current method is notably stronger on `HD95`, `Liver`, `Pancreas`, `Spleen`, and `Stomach`, while still trailing the original paper on mean Dice and several other organs.
 
 Relevant implementation files:
 

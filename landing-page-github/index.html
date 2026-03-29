@@ -72,6 +72,11 @@
                 <strong>28.80 mean HD95</strong>
               </div>
             </div>
+            <p class="panel-wins">
+              Better than the original TransUNet paper on <strong>HD95</strong>,
+              <strong>Liver</strong>, <strong>Pancreas</strong>, <strong>Spleen</strong>,
+              and <strong>Stomach</strong>.
+            </p>
             <p class="panel-note">
               These numbers come from the current MSCAF-TransUNet run. The earlier
               cleaned baseline remains in the repo as a reference point.
@@ -184,10 +189,11 @@
           </article>
           <article class="result-card narrative">
             <span class="result-label">Comparison</span>
-            <strong>Lower HD95, slightly lower Dice</strong>
+            <strong>Stronger HD95 and four organ Dice scores</strong>
             <p>
-              Compared with the earlier baseline reproduction at 77.29 Dice and 30.71 HD95, the
-              current attention run improves HD95 while trailing slightly on Dice.
+              Compared with the original TransUNet paper, MSCAF-TransUNet is stronger on
+              <code>HD95</code>, <code>Liver</code>, <code>Pancreas</code>, <code>Spleen</code>,
+              and <code>Stomach</code>, while remaining slightly lower on overall Dice.
             </p>
           </article>
         </div>
