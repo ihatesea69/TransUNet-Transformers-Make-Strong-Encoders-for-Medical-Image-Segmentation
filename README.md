@@ -29,10 +29,10 @@ Reference baseline from the earlier cleaned reproduction:
 
 ### Comparison with the original TransUNet paper
 
-| Framework | Encoder | Decoder | Average DSC ↑ | HD ↓ | Aorta | Gallbladder | Kidney (L) | Kidney (R) | Liver | Pancreas | Spleen | Stomach |
+| Framework | Encoder | Decoder | Average DSC ↑ | HD ↓ | Pancreas | Liver | Spleen | Stomach | Aorta | Gallbladder | Kidney (L) | Kidney (R) |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| **MSCAF-TransUNet (Ours)** | R50-ViT | CUP | 76.61 | **28.80** | 86.72 | 57.15 | 79.33 | 75.14 | **94.40** | **57.36** | **86.54** | **76.20** |
-| TransUNet (paper) | R50-ViT | CUP | **77.48** | 31.69 | **87.23** | **63.13** | **81.87** | **77.02** | 94.08 | 55.86 | 85.08 | 75.62 |
+| **MSCAF-TransUNet (Ours)** | R50-ViT | CUP | 76.61 | **28.80** | **57.36** | **94.40** | **86.54** | **76.20** | 86.72 | 57.15 | 79.33 | 75.14 |
+| TransUNet (paper) | R50-ViT | CUP | **77.48** | 31.69 | 55.86 | 94.08 | 85.08 | 75.62 | **87.23** | **63.13** | **81.87** | **77.02** |
 
 Bold values indicate the better score between **MSCAF-TransUNet** and the original paper row. The current method first stands out on the metrics it improves: `HD95` is lower (`28.80` vs `31.69`), and organ-wise Dice is higher on `Pancreas` (`57.36` vs `55.86`), `Liver` (`94.40` vs `94.08`), `Spleen` (`86.54` vs `85.08`), and `Stomach` (`76.20` vs `75.62`). It still trails the original paper on mean Dice and several other organs.
 
