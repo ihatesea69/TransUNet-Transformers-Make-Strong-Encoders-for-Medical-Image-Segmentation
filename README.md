@@ -25,6 +25,15 @@ Reference baseline from the earlier cleaned reproduction:
 - Mean Dice: `77.29%`
 - Mean HD95: `30.71`
 
+### Comparison with the original TransUNet paper
+
+| Framework | Encoder | Decoder | Average DSC ↑ | HD ↓ | Aorta | Gallbladder | Kidney (L) | Kidney (R) | Liver | Pancreas | Spleen | Stomach |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **Ours (`cnn_fusion`, `1/8,1/4,1/2`)** | R50-ViT | CUP | 76.61 | **28.80** | 86.72 | 57.15 | 79.33 | 75.14 | **94.40** | **57.36** | **86.54** | **76.20** |
+| TransUNet (paper) | R50-ViT | CUP | **77.48** | 31.69 | **87.23** | **63.13** | **81.87** | **77.02** | 94.08 | 55.86 | 85.08 | 75.62 |
+
+Bold values indicate the better score between the current attention run and the original paper row. The current `cnn_fusion` run improves HD95 and four organ-wise Dice scores (`Liver`, `Pancreas`, `Spleen`, `Stomach`) while still trailing the original paper on mean Dice.
+
 Relevant implementation files:
 
 - [networks/vit_seg_modeling.py](networks/vit_seg_modeling.py)
