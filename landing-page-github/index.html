@@ -64,17 +64,17 @@
             <p><code>cnn_fusion</code> on scales <code>1/8, 1/4, 1/2</code></p>
             <div class="mini-grid">
               <div>
-                <span class="mini-label">Legacy baseline</span>
-                <strong>77.29 mean Dice</strong>
+                <span class="mini-label">Current run</span>
+                <strong>76.61 mean Dice</strong>
               </div>
               <div>
-                <span class="mini-label">Legacy baseline</span>
-                <strong>30.71 mean HD95</strong>
+                <span class="mini-label">Current run</span>
+                <strong>28.80 mean HD95</strong>
               </div>
             </div>
             <p class="panel-note">
-              Existing quantitative results shown here come from the earlier TransUNet reproduction.
-              The new attention variants are the active research direction in this repo.
+              These numbers come from the current CNN-fusion attention experiment. The earlier
+              cleaned baseline remains in the repo as a reference point.
             </p>
           </div>
         </aside>
@@ -169,25 +169,25 @@
       <div class="container">
         <div class="section-heading">
           <p class="eyebrow">Results</p>
-          <h2>What is already established versus what is being explored</h2>
+          <h2>Current attention result versus the older baseline</h2>
         </div>
         <div class="results-grid">
           <article class="result-card">
-            <span class="result-label">Established reproduction</span>
-            <strong>77.29</strong>
-            <p>Mean Dice on Synapse from the earlier TransUNet reproduction setup.</p>
+            <span class="result-label">Current attention run</span>
+            <strong>76.61</strong>
+            <p>Mean Dice for <code>cnn_fusion</code> with scales <code>1/8,1/4,1/2</code>.</p>
           </article>
           <article class="result-card">
-            <span class="result-label">Established reproduction</span>
-            <strong>30.71</strong>
-            <p>Mean HD95 from the same baseline reproduction.</p>
+            <span class="result-label">Current attention run</span>
+            <strong>28.80</strong>
+            <p>Mean HD95 from the same CNN-attention evaluation.</p>
           </article>
           <article class="result-card narrative">
-            <span class="result-label">Current stage</span>
-            <strong>Attention study in progress</strong>
+            <span class="result-label">Comparison</span>
+            <strong>Lower HD95, slightly lower Dice</strong>
             <p>
-              The cleaned repo now prioritizes the attention-augmented encoder experiments. The site
-              keeps the legacy baseline numbers visible while the new attention runs are evaluated.
+              Compared with the earlier baseline reproduction at 77.29 Dice and 30.71 HD95, the
+              current attention run improves HD95 while trailing slightly on Dice.
             </p>
           </article>
         </div>

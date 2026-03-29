@@ -11,6 +11,20 @@ This repo currently centers on two attention variants added on top of the hybrid
 - `pre_hidden`: refine selected CNN scales and fuse them into the hidden feature before patch projection
 - `cnn_fusion`: refine selected CNN skip features and fuse multiple CNN scales back into the hidden feature
 
+## Current result snapshot
+
+Latest evaluated attention run:
+
+- Variant: `cnn_fusion`
+- Scales: `1/8,1/4,1/2`
+- Mean Dice: `76.61%`
+- Mean HD95: `28.80`
+
+Reference baseline from the earlier cleaned reproduction:
+
+- Mean Dice: `77.29%`
+- Mean HD95: `30.71`
+
 Relevant implementation files:
 
 - [networks/vit_seg_modeling.py](networks/vit_seg_modeling.py)
